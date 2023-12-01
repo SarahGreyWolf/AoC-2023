@@ -1,5 +1,3 @@
-#![feature(iter_advance_by)]
-
 use std::fs::File;
 use std::io::{self, Read};
 use std::iter::Peekable;
@@ -91,7 +89,9 @@ fn find_number_words(peekable: &mut Peekable<Chars<'_>>) -> Option<char> {
                 continue 'words;
             }
         }
-        peekable.advance_by(word.len() - 1).unwrap();
+        for _ in 0..(word.len() - 1) {
+            peekable.next().unwrap();
+        }
         return char::from_digit((index as u64 + 1) as u32, 10);
     }
 
