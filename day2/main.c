@@ -22,7 +22,7 @@ typedef struct {
 } Round;
 
 int analyse_lines(FILE *fp);
-int check_game(char *line, size_t len);
+int check_game(char *line, ssize_t len, int part);
 
 int main(int argc, char **argv) {
     if (argc != 2) {
@@ -53,16 +53,17 @@ int analyse_lines(FILE *fp) {
     // This is bad, bad coding practice, very bad, but for this I don't care
     char **lines = malloc(10000);
     size_t len;
-    ssize_t read;
-    while ((read = getline(&lines[line_index], &len, fp)) != -1) {
-        printf("Read %lu for line %d\n", len, line_index);
+    ssize_t *read = malloc(10000);
+    while ((read[line_index] = getline(&lines[line_index], &len, fp)) != -1) {
+        printf("Read %lu for line %d\n", read[line_index], line_index);
         line_index++;
     }
 
+    // PART 1
     int accumulated = 0;
 
     for (int i = 0; i < line_index; i++) {
-        int id = check_game(lines[i], len);
+        int id = check_game(lines[i], read[i], 1);
         if (id == -1) {
             free(lines);
             return -1;
@@ -71,12 +72,25 @@ int analyse_lines(FILE *fp) {
         accumulated = accumulated + id;
     }
 
-    printf("The accumulated value is %d\n", accumulated);
+    printf("The accumulated value is %d\n\n", accumulated);
+
+    accumulated = 0;
+    for (int i = 0; i < line_index; i++) {
+        int result = check_game(lines[i], read[i], 2);
+        if (result == -1) {
+            free(lines);
+            return -1;
+        }
+        printf("Squared result for %d: %d\n", i + 1, result);
+        accumulated = accumulated + result;
+    }
+
+    printf("The accumulated square is %d\n", accumulated);
 
     return line_index;
 }
 
-int check_game(char *line, size_t len) {
+int check_game(char *line, ssize_t len, int part) {
     // All rounds for a line, expecting 10 or less
     Round *round = malloc(sizeof(Round) * 10);
 
@@ -145,14 +159,16 @@ int check_game(char *line, size_t len) {
 
     index = 0;
     int colour_index = 0;
-    for (int c = round_starts; c < len; c++) {
+    for (int c = round_starts - 1; c < len; c++) {
         if (isdigit(line[c]) && colour_char[colour_index] == ' ') {
-            numbers[colour_index][index++] = line[c];
+            numbers[colour_index][index] = line[c];
+            index++;
         }
         if (!isdigit(line[c]) && line[c] != ' ' &&
             colour_char[colour_index] == ' ') {
             index = 0;
-            colour_char[colour_index++] = line[c];
+            colour_char[colour_index] = line[c];
+            colour_index++;
             if (line[c] == 'r')
                 c = c + 3;
             if (line[c] == 'g')
@@ -160,7 +176,7 @@ int check_game(char *line, size_t len) {
             if (line[c] == 'b')
                 c = c + 4;
         }
-        if (line[c] == ';' || line[c] == '\n' || c == len) {
+        if (line[c] == ';' || line[c] == '\n') {
             int red = 0;
             int green = 0;
             int blue = 0;
@@ -175,7 +191,6 @@ int check_game(char *line, size_t len) {
                     blue = atoi(numbers[i]);
                 }
             }
-            printf("Red: %d, Green: %d, Blue: %d\n", red, green, blue);
             round[rounds].red = red;
             round[rounds].green = green;
             round[rounds].blue = blue;
@@ -192,25 +207,43 @@ int check_game(char *line, size_t len) {
         }
     }
 
-    int failed = 0;
-    for (int i = 0; i < rounds; i++) {
-        if (round[i].red > max_red) {
-            failed = 1;
-            break;
+    if (part == 1) {
+        int failed = 0;
+        for (int i = 0; i < rounds; i++) {
+            if (round[i].red > max_red) {
+                failed = 1;
+                break;
+            }
+            if (round[i].green > max_green) {
+                failed = 1;
+                break;
+            }
+            if (round[i].blue > max_blue) {
+                failed = 1;
+                break;
+            }
         }
-        if (round[i].green > max_green) {
-            failed = 1;
-            break;
+        if (!failed) {
+            free(round);
+            return game_id;
         }
-        if (round[i].blue > max_blue) {
-            failed = 1;
-            break;
+    }
+    if (part == 2) {
+        int most_red = 0;
+        int most_green = 0;
+        int most_blue = 0;
+        for (int i = 0; i < rounds; i++) {
+            if (round[i].red > most_red)
+                most_red = round[i].red;
+            if (round[i].green > most_green)
+                most_green = round[i].green;
+            if (round[i].blue > most_blue)
+                most_blue = round[i].blue;
         }
+        free(round);
+        return most_red * most_green * most_blue;
     }
 
     free(round);
-    if (!failed)
-        return game_id;
-    else
-        return 0;
+    return 0;
 }
