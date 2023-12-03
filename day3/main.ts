@@ -9,6 +9,8 @@ if (import.meta.main) {
     const lines = text.split('\n');
     // Part 1
     console.log("The accumulated value is", findAdjacentNumbers(lines));
+    // Part 2
+    console.log("The accumulated value of gear ratios is", findAdjacentNumbersForGears(lines));
 }
 
 function findAdjacentNumbers(input: string[]): number {
@@ -33,6 +35,43 @@ function findAdjacentNumbers(input: string[]): number {
         });
     });
     console.table(test);
+    return accumulator;
+}
+
+function findAdjacentNumbersForGears(input: string[]): number {
+    let just_found = false;
+    const symbols: { char: string, row_index: number, col_index: number, first_adjacent: number, second_adjacent: number }[] = [];
+    input.forEach((line, l_index, l_array) => {
+        just_found = false;
+        Array.from(line).forEach((char, c_index, c_array) => {
+            if (isDigit(char)) {
+                const symbol = getSymbol(c_index, l_index, c_array, l_array);
+                if (symbol !== undefined && symbol.char == '*' && !just_found) {
+                    const existing_symbol = symbols.find((value, _index, _obj) =>
+                        value.char == symbol.char && value.col_index == symbol.col_index && value.row_index == symbol.row_index
+                    );
+                    just_found = true;
+                    const result = lookBackAndForth(c_index, c_array);
+                    if (existing_symbol === undefined) {
+                        symbols.push({ char: symbol.char, row_index: symbol.row_index, col_index: symbol.col_index, first_adjacent: result, second_adjacent: -1 });
+                    } else {
+                        if (existing_symbol.first_adjacent === -1)
+                            existing_symbol.first_adjacent = result;
+                        else if (existing_symbol.second_adjacent === -1)
+                            existing_symbol.second_adjacent = result;
+                    }
+                }
+            } else {
+                just_found = false;
+            }
+        });
+    });
+    let accumulator = 0;
+    symbols.forEach((value, _index, _array) => {
+        if (value.first_adjacent === -1 || value.second_adjacent === -1)
+            return;
+        accumulator += (value.first_adjacent * value.second_adjacent)
+    });
     return accumulator;
 }
 
