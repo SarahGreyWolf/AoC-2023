@@ -1,8 +1,9 @@
 use std::env;
 use std::fs::File;
 use std::io::Read;
+use std::thread;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct Set {
     map_id: usize,
     destination_start: usize,
@@ -109,9 +110,66 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let temperature = get_at_index(&maps[4], light);
         let humidity = get_at_index(&maps[5], temperature);
         let location = get_at_index(&maps[6], humidity);
-        println!("For seed {seed}, soil {soil}, fertilizer {fertilizer}, water {water}, light {light}, temperature {temperature}, humidity {humidity}, location {location}");
+        // println!("For seed {seed}, soil {soil}, fertilizer {fertilizer}, water {water}, light {light}, temperature {temperature}, humidity {humidity}, location {location}");
         if location < closest_location {
             closest_location = location;
+        }
+    }
+    println!("The closest seed location is {}", closest_location);
+
+    // PART 2
+    let mut seed_ranges: Vec<(u32, u32)> = vec![];
+    let mut index = 0;
+    for seed in seeds {
+        if index == 0 {
+            seed_ranges.push((seed, 0));
+            index += 1;
+        } else {
+            seed_ranges.last_mut().unwrap().1 = seed;
+            index = 0;
+        }
+    }
+    let mut closest_location = largest * 1000;
+
+    let mut threads = vec![];
+
+    for range in seed_ranges {
+        let maps_clone = maps.clone();
+        let thread = thread::spawn(move || {
+            let mut our_closest = largest;
+            println!(
+                "Created thread for range {} to {}",
+                range.0,
+                range.0 + range.1
+            );
+            for seed in range.0..range.0 + range.1 {
+                let seed = seed as usize;
+                let soil = get_at_index(&maps_clone[0], seed);
+                let fertilizer = get_at_index(&maps_clone[1], soil);
+                let water = get_at_index(&maps_clone[2], fertilizer);
+                let light = get_at_index(&maps_clone[3], water);
+                let temperature = get_at_index(&maps_clone[4], light);
+                let humidity = get_at_index(&maps_clone[5], temperature);
+                let location = get_at_index(&maps_clone[6], humidity);
+                // println!("For seed {seed}, soil {soil}, fertilizer {fertilizer}, water {water}, light {light}, temperature {temperature}, humidity {humidity}, location {location}");
+                if location < our_closest {
+                    our_closest = location;
+                }
+            }
+            println!(
+                "Finished thread for range {} to {} with {our_closest}",
+                range.0,
+                range.0 + range.1
+            );
+            our_closest
+        });
+        threads.push(thread);
+    }
+
+    for thread in threads {
+        let thread_closest = thread.join().unwrap();
+        if thread_closest < closest_location {
+            closest_location = thread_closest;
         }
     }
     println!("The closest seed location is {}", closest_location);
@@ -133,14 +191,11 @@ fn get_seeds(line: &str) -> Vec<u32> {
 }
 
 fn get_at_index(sets: &[Set], index: usize) -> usize {
-    let mut result = index;
     for set in sets {
-        if index < set.source_start || index > set.source_start + set.range {
-            continue;
+        if index >= set.source_start && index < set.source_start + set.range {
+            let depth_into_source = index - set.source_start;
+            return set.destination_start + depth_into_source;
         }
-        let depth_into_source = index - set.source_start;
-        result = set.destination_start + depth_into_source;
-        break;
     }
-    result
+    index
 }
