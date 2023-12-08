@@ -8,7 +8,7 @@ const SCORE: { [key: string]: number } = {
     '8': 8,
     '9': 9,
     'T': 10,
-    'J': 11,
+    'J': 1,
     'Q': 12,
     'K': 13,
     'A': 14
@@ -59,6 +59,7 @@ async function main() {
     scored_lines.forEach(element => {
         const classification = classify(element.scored);
         console.log(element, ":", classification)
+        console.log()
     });
     let accumulator = 0;
     scored_lines.forEach((element, idx) => {
@@ -101,11 +102,21 @@ function classify(scored: number[]): Hands {
         values[value - 1] += 1;
     });
 
-    let result = Hands.HighCard;
-
-    if (scored[0] === 2 && scored[1] === 2 && scored[2] == 8 && scored[3] == 2 && scored[4] == 8) {
-        console.log(values);
+    // Found a joker
+    if (scored.find(value => value == 1) !== undefined && values[0] != 5) {
+        let highest_index = -1;
+        let highest = 0;
+        values.forEach((value, idx) => {
+            if (value > highest && idx != 0) {
+                highest_index = idx;
+                highest = value;
+            }
+        });
+        values[highest_index] += values[0];
+        values[0] = 0;
     }
+
+    let result = Hands.HighCard;
 
     let index = 0;
     for (const element of values) {
@@ -120,17 +131,14 @@ function classify(scored: number[]): Hands {
         if (element == 3) {
             if (values.find((value, _idx, _obj) => value == 2) !== undefined) {
                 result = Hands.FullHouse;
-                console.log(result);
                 break;
             } else {
                 result = Hands.ThreeOfAKind;
-                console.log(result);
             }
         }
         if (element == 2) {
             if (values.find((value, idx, _obj) => index != idx && value == 2) !== undefined) {
                 result = Hands.TwoPair;
-                console.log(result);
                 break;
             } else {
                 result = Hands.OnePair;
