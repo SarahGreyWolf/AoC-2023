@@ -1,0 +1,10 @@
+{
+    "tasks": {
+        "dev": "deno run --watch --allow-read main.ts test.txt"
+    },
+    "fmt": {
+        "options": {
+            "indentWidth": 4
+        }
+    }
+}
